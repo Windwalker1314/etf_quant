@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "steadyquant"
+version = "0.1.0"
+description = "Local Tushare / AKQuant personal quantitative research workstation"
+requires-python = ">=3.12"
+dependencies = ["akquant==0.3.55", "pandas>=2.2,<3", "numpy>=2.2", "tushare==1.4.29", "duckdb>=1.4", "python-dotenv>=1.0", "PyYAML>=6", "streamlit>=1.50", "scipy>=1.14"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.12"]
+
+[project.scripts]
+sq = "steadyquant.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 110
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]

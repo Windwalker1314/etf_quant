@@ -1,0 +1,6 @@
+# AKQuant expression syntax; use only present/past observations. No Python eval.
+momentum_60: Close / Ref(Close, 60) - 1
+momentum_120: Close / Ref(Close, 120) - 1
+trend_120: Close / Ts_Mean(Close, 120) - 1
+volatility_60: Ts_Std(Close / Ref(Close, 1) - 1, 60)
+reversal_20: 1 - Close / Ref(Close, 20)

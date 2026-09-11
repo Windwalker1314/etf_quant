@@ -1,0 +1,76 @@
+name: Broad Monthly Core 30
+data_start: '20130101'
+backtest_start: '2015-01-05'
+oos_start: '2023-01-01'
+initial_cash: 1000000
+risk_free_rate: 0.02
+cash_rate: 0.0
+commission_bps: 3.0
+minimum_commission: 5.0
+slippage_bps: 5.0
+lot_size: 100
+participation_rate: 0.01
+rebalance_weekday: 4
+rebalance_band: 0.03
+cash_buffer: 0.01
+trend_windows:
+- 120
+- 240
+trend_floor: 0.5
+vol_window: 60
+target_vol: 0.08
+min_history: 240
+min_amount: 10000000
+assets:
+- symbol: 510300.SH
+  name: 沪深300ETF
+  kind: fund
+  bucket: cn_equity
+  weight: 0.13999999999999999
+- symbol: 513500.SH
+  name: 标普500ETF
+  kind: fund
+  bucket: us_equity
+  weight: 0.105
+- symbol: 159920.SZ
+  name: 恒生ETF
+  kind: fund
+  bucket: hk_equity
+  weight: 0.05
+- symbol: 518880.SH
+  name: 黄金ETF
+  kind: fund
+  bucket: gold
+  weight: 0.2
+- symbol: 511010.SH
+  name: 国债ETF
+  kind: fund
+  bucket: bond
+  weight: 0.3
+- symbol: 159985.SZ
+  name: 豆粕ETF
+  kind: fund
+  bucket: commodity
+  weight: 0.1
+- symbol: 510500.SH
+  name: 中证500ETF
+  kind: fund
+  bucket: cn_equity
+  weight: 0.02
+- symbol: 159915.SZ
+  name: 创业板ETF
+  kind: fund
+  bucket: cn_equity
+  weight: 0.02
+- symbol: 588000.SH
+  name: 科创50ETF
+  kind: fund
+  bucket: cn_equity
+  weight: 0.02
+- symbol: 513100.SH
+  name: 纳指ETF
+  kind: fund
+  bucket: us_equity
+  weight: 0.045
+model: fixed
+rebalance_frequency: monthly

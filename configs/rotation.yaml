@@ -1,0 +1,43 @@
+name: Diversified Momentum Research v2
+model: rotation
+data_start: '20130101'
+backtest_start: '2015-01-05'
+oos_start: '2023-01-01'
+initial_cash: 1000000
+risk_free_rate: 0.02
+cash_rate: 0.0
+commission_bps: 3.0
+minimum_commission: 5.0
+slippage_bps: 5.0
+lot_size: 100
+participation_rate: 0.01
+rebalance_weekday: 4
+rebalance_band: 0.03
+cash_buffer: 0.01
+trend_windows: [120, 240]
+trend_floor: 0.0
+vol_window: 60
+target_vol: 0.14
+min_history: 253
+min_amount: 10000000
+rotation_family: ensemble
+top_n: 4
+max_asset_weight: 0.30
+max_group_weight: 0.60
+assets:
+  - {symbol: '510300.SH', name: 沪深300ETF, kind: fund, bucket: cn_equity, weight: 0.05}
+  - {symbol: '510500.SH', name: 中证500ETF, kind: fund, bucket: cn_equity, weight: 0.05}
+  - {symbol: '159915.SZ', name: 创业板ETF, kind: fund, bucket: cn_equity, weight: 0.05}
+  - {symbol: '588000.SH', name: 科创50ETF, kind: fund, bucket: cn_equity, weight: 0.05}
+  - {symbol: '512100.SH', name: 中证1000ETF, kind: fund, bucket: cn_equity, weight: 0.05}
+  - {symbol: '510880.SH', name: 红利ETF, kind: fund, bucket: cn_equity, weight: 0.05}
+  - {symbol: '513500.SH', name: 标普500ETF, kind: fund, bucket: us_equity, weight: 0.05}
+  - {symbol: '513100.SH', name: 纳指ETF, kind: fund, bucket: us_equity, weight: 0.05}
+  - {symbol: '159920.SZ', name: 恒生ETF, kind: fund, bucket: hk_equity, weight: 0.05}
+  - {symbol: '513030.SH', name: 德国ETF, kind: fund, bucket: europe_equity, weight: 0.05}
+  - {symbol: '513520.SH', name: 日经ETF, kind: fund, bucket: japan_equity, weight: 0.05}
+  - {symbol: '518880.SH', name: 黄金ETF, kind: fund, bucket: gold, weight: 0.10}
+  - {symbol: '511010.SH', name: 国债ETF, kind: fund, bucket: bond, weight: 0.20}
+  - {symbol: '159985.SZ', name: 豆粕ETF, kind: fund, bucket: commodity, weight: 0.05}
+  - {symbol: '159980.SZ', name: 有色ETF, kind: fund, bucket: commodity, weight: 0.05}
+  - {symbol: '159981.SZ', name: 能化ETF, kind: fund, bucket: commodity, weight: 0.05}

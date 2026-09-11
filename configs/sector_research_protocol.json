@@ -1,0 +1,46 @@
+{
+  "frozen_at": "2026-09-11T11:08:58.644328",
+  "end": "2026-09-10",
+  "scope": "Research only; do not change active ETF portfolio or account; Sharpe primary, increased drawdown acceptable and disclosed",
+  "primary_capital": 200000,
+  "robustness_capitals": [
+    100000,
+    1000000
+  ],
+  "candidates": {
+    "raw10": {
+      "family": "raw",
+      "fraction": 0.1
+    },
+    "raw20": {
+      "family": "raw",
+      "fraction": 0.2
+    },
+    "risk10": {
+      "family": "risk_adjusted",
+      "fraction": 0.1
+    },
+    "risk20": {
+      "family": "risk_adjusted",
+      "fraction": 0.2
+    }
+  },
+  "signal": "0.5*63day+0.5*126day adjusted price momentum; risk-adjusted divides by63day annual volatility floor8%; >=127 real bars, >=120 of126 recent real bars, trailing20day amount>=20million; positive126day return, price above126day average, positive equal-weight63/126 relative return vsCSI300 ETF; no future data for transforms.",
+  "selection": "Weekly first observed trading session close, next open; max2 diverse groups; held eligible index/group representative retained, other index representative chosen by past20day liquidity, strongest pergroup; incumbents retained within top5 group ranks; pairwise trailing126day correlation below0.85 with>=100 pairs. Satellite target half allotted fraction per occupied slot; empty slots return core.",
+  "funding": "Core current adaptive equal-risk rules, monthly schedule; satellite weekly; changing occupied satellite budget forces core resizing to fund it; identical adjustment in matched broad controls. Existing sat positions drift threshold2pp, core3pp. No leverage; satellite<=20% and each<=10%; no strict no-drawdown-increase gate.",
+  "controls": [
+    "pure core",
+    "for each candidate, identical occupied budget allocated equally toCSI300 andCSI500 ETFs, same funding schedule",
+    "constant10% and20% broad basket with remainder core"
+  ],
+  "periods": {
+    "selection": "2015-01-05 through2019-12-31",
+    "validation": "2020-01-01 through2022-12-31",
+    "review": "2023-01-01 through2026-09-10",
+    "full": "2015-01-05 through2026-09-10"
+  },
+  "choice": "At20w select highest2015-2019 Sharpe among4 fixed candidates before reading later results; do not reselect using2020+. Report all4 and controls; retain baseline if selected candidate lacks later Sharpe improvement. Strong evidence requires positive paired block-bootstrap Sharpe difference intervals vs core and budget-matched broad control; intervals not multiplicity-adjusted. No automatic activation even if promising.",
+  "sensitivity": "Selected family/fraction only: monthly checks, skip latest5 observations in momentum, doubled fees+slippage; across10w/20w/100w selected candidate and controls, plus fresh2023 principal resets. No post-result retuning.",
+  "fees": "1.5bps,min5CNY,5bps slippage,100unit lots,1% volume cap,next open; conservative writeoff if fund held through delisting, disclose inferred terminal dates and source gaps",
+  "limitations": "All windows previously observed, not virgin holdout. Source metadata includes retirees but historical taxonomy/metadata versions not certified. No pre-inception index returns. ETF dividends use adjustment-factor reinvestment approximation; historicalQDII premium gate absent."
+}
