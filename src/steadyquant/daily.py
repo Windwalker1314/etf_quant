@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import fcntl
 import json
 import math
 import subprocess
@@ -23,15 +22,36 @@ from .strategy import rebalance_needed, risk_exit_due, scheduled, target_weights
 def job_lock(root: Path = ROOT):
     path = root / "data/daily.lock"
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w") as handle:
+    with path.open("a+b") as handle:
+        if sys.platform == "win32":
+            import msvcrt
+
+            if path.stat().st_size == 0:
+                handle.write(b"0")
+                handle.flush()
+            handle.seek(0)
+            def acquire():
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+
+            def release():
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+        else:
+            import fcntl
+
+            def acquire():
+                fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+            def release():
+                fcntl.flock(handle, fcntl.LOCK_UN)
         try:
-            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
+            acquire()
+        except OSError:
             raise DataError("A daily job is already running") from None
         try:
             yield
         finally:
-            fcntl.flock(handle, fcntl.LOCK_UN)
+            release()
 
 
 def calendar_dates(cache: Cache, now: datetime | None = None) -> tuple[str, str]:
@@ -132,6 +152,7 @@ def make_report(
                 "name": asset["name"],
                 "target_weight": target,
                 "current_weight": current,
+                "current_quantity": positions.get(s, 0) if account else None,
                 "difference": target - current if current is not None else None,
                 "close": close,
             }

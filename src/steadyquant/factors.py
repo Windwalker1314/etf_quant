@@ -5,10 +5,7 @@ import warnings
 
 import numpy as np
 import pandas as pd
-import polars as pl
 import yaml
-from akquant.data import ParquetDataCatalog
-from akquant.factor import FactorEngine
 
 from .config import ROOT
 
@@ -50,6 +47,11 @@ def validate_expression(expr: str):
 
 
 def compute(data: dict[str, pd.DataFrame], expressions: dict[str, str] | None = None) -> pd.DataFrame:
+    # Daily adaptive allocation only needs adjusted_frame, not the research engine.
+    import polars as pl
+    from akquant.data import ParquetDataCatalog
+    from akquant.factor import FactorEngine
+
     expressions = expressions or yaml.safe_load((ROOT / "configs/factors.yaml").read_text())
     engine = FactorEngine(ParquetDataCatalog(str(ROOT / "data/akquant_catalog")))
     frame = adjusted_frame(data)

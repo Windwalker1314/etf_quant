@@ -6,6 +6,7 @@
 !/requirements.lock.txt
 !/app.py
 !/start.command
+!/windows/
 !/src/
 !/tests/
 !/scripts/

@@ -107,18 +107,24 @@ if page == "组合总览":
     if not stats:
         st.info("尚无研究结果。在终端运行 .venv/bin/sq sync 与 .venv/bin/sq backtest。")
     else:
-        s = stats["strategy"]
+        from steadyquant.metrics import performance
+
+        eq = pd.read_parquet(research / "equity.parquet").loc["2019-01-01":].copy()
+        if len(eq) < 3:
+            st.info("2019 年以后的回测数据不足，暂时无法展示区间指标。")
+            st.stop()
+        s = performance(eq.equity, cfg["risk_free_rate"])
+        overview_oos = performance(eq.equity.loc["2023-01-01":], cfg["risk_free_rate"])
         columns = st.columns(4)
         for col, label, value in zip(
             columns,
             ["年化收益", "夏普（无风险 2%）", "最大回撤", "2023 起回顾检验夏普"],
-            [pct(s["cagr"]), number(s["sharpe"]), pct(s["max_drawdown"]), number(stats["oos"].get("sharpe"))],
+            [pct(s["cagr"]), number(s["sharpe"]), pct(s["max_drawdown"]), number(overview_oos.get("sharpe"))],
         ):
             col.metric(label, value)
         st.caption(
-            f"历史研究 · {s['start']} — {s['end']} · 示例资金 ¥{cfg['initial_cash']:,.0f}，不代表真实账户"
+            f"展示区间 · {s['start']} — {s['end']}（现有回测数据截止日） · 截取既有回测并将起点净值归一，不代表从2019年重新投入本金或真实账户收益"
         )
-        eq = pd.read_parquet(research / "equity.parquet")
         st.subheader("净值路径")
         fig = go.Figure()
         for key, label, color in [
@@ -185,7 +191,11 @@ if page == "组合总览":
                 if activation
                 else "规则：20% A股、15% 美国、5% 香港、20% 黄金、30% 国债、10% 商品；趋势与波动约束可将部分预算留作现金。"
             )
-            st.write(f"平均投资比例：{pct(stats['average_exposure'])}　累计模拟交易：{stats['trades']}")
+            overview_trades = pd.read_parquet(research / "trades.parquet")
+            overview_trades = overview_trades[
+                pd.to_datetime(overview_trades.date).between(eq.index[0], eq.index[-1])
+            ]
+            st.write(f"区间平均投资比例：{pct(eq.exposure.mean())}　区间模拟交易：{len(overview_trades)}")
             native = stats["native_engine_check"]
             st.write("独立引擎核对：" + ("通过" if native["verified"] else "未通过 / 范围受限"))
             st.caption(

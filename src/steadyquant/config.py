@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 
 import yaml
 from dotenv import load_dotenv
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(os.environ.get("STEADYQUANT_HOME", Path(__file__).resolve().parents[2]))
 
 
 def load_active_config() -> dict:
@@ -18,7 +19,7 @@ def load_active_config() -> dict:
 
 def load_config(path: str | Path | None = None) -> dict:
     load_dotenv(ROOT / ".env", override=False)
-    cfg = yaml.safe_load(Path(path or ROOT / "configs/steady.yaml").read_text())
+    cfg = yaml.safe_load(Path(path or ROOT / "configs/steady.yaml").read_text(encoding="utf-8"))
     weights = [a["weight"] for a in cfg["assets"]]
     if len({a["symbol"] for a in cfg["assets"]}) != len(weights):
         raise ValueError("Duplicate asset symbols")
@@ -70,5 +71,5 @@ def fingerprint(value: object) -> str:
 def write_json(path: Path, value: object):
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(value, ensure_ascii=False, indent=2, default=str, allow_nan=False))
+    tmp.write_text(json.dumps(value, ensure_ascii=False, indent=2, default=str, allow_nan=False), encoding="utf-8")
     tmp.replace(path)

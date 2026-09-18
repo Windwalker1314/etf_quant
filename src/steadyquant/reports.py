@@ -93,6 +93,22 @@ def research_html(output: Path, cfg: dict, stats: dict, equity: pd.DataFrame, po
 
 
 def daily_html(report: dict) -> str:
+    orders_by_symbol = {o["symbol"]: o for o in report.get("orders", [])}
+    holdings = []
+    for asset in report.get("allocations", []):
+        if asset["symbol"] == "CASH":
+            continue
+        quantity = asset.get("current_quantity")
+        order = orders_by_symbol.get(asset["symbol"])
+        delta = (order["quantity"] * (1 if order["side"] == "BUY" else -1)) if order else 0
+        holdings.append({
+            "ETF 代码": asset["symbol"].split(".")[0],
+            "名称": asset["name"],
+            "当前持仓（份）": f"{quantity:,.0f}" if quantity is not None else "未确认",
+            "本次操作（份）": f"{'买入' if delta > 0 else '卖出'} {abs(delta):,}" if delta else "不调整",
+            "调整后持仓（份）": f"{quantity + delta:,.0f}" if quantity is not None else "—",
+        })
+    holdings_html = pd.DataFrame(holdings).to_html(index=False, border=0, escape=True) if holdings else "数据未就绪"
     rows = pd.DataFrame(report.get("allocations", []))
     if not rows.empty:
         for col in ("target_weight", "current_weight", "difference"):
@@ -109,12 +125,6 @@ def daily_html(report: dict) -> str:
             }
         )
     table = rows.to_html(index=False, border=0, escape=True) if not rows.empty else "数据未就绪"
-    orders = pd.DataFrame(report.get("orders", []))
-    order_html = (
-        orders.to_html(index=False, border=0, escape=True)
-        if not orders.empty
-        else "本次没有可执行的调仓清单。"
-    )
     reasons = "<br>".join(html.escape(s) for s in report.get("notes", []))
-    body = f'<h1>每日组合简报</h1><p class="sub">信号日期 {html.escape(report.get("signal_date", "—"))} · 下一交易日 {html.escape(report.get("execution_date", "—"))}</p><div class="note">{html.escape(report["status"])}<br>{reasons}</div><h2>目标配置</h2><div class="box">{table}</div><h2>调仓建议</h2><div class="box">{order_html}</div>'
+    body = f'<h1>ETF 持仓与买卖清单</h1><p class="sub">行情截至 {html.escape(report.get("signal_date", "—"))} 收盘 · 参考交易日 {html.escape(report.get("execution_date", "—"))}</p><h2>持仓数量一览</h2><p class="sub">数量单位：份。调整后持仓是假设清单全部成交后的数量，尚未实际成交。</p><div class="box" style="overflow-x:auto">{holdings_html}</div><div class="note">{html.escape(report["status"])}<br>{reasons}</div><details><summary>查看目标权重与参考价格</summary><div class="box" style="overflow-x:auto">{table}</div></details>'
     return shell("SteadyQuant · 每日简报", body)

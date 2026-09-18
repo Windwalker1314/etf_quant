@@ -1,0 +1,13 @@
+pandas==2.3.3
+numpy==2.5.3
+duckdb==1.5.5
+pyarrow==25.0.1
+tushare==1.4.29
+python-dotenv==1.2.3
+PyYAML==6.0.3
+streamlit==1.63.0
+plotly==7.0.0
+tzdata==2026.3
+# Explicit because cross-platform pip resolution otherwise uses the build host's markers.
+colorama==0.4.6
+watchdog==6.0.0
