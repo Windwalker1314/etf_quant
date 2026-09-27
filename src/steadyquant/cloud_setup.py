@@ -8,7 +8,8 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from .config import ROOT, load_active_config, write_json
+from .config import ROOT, write_json
+from .strategy_catalog import load_strategy_config, market_sync_config, strategies
 
 STATUS = ROOT / "data/cloud_setup.json"
 LOG = ROOT / "data/cloud_setup.log"
@@ -80,10 +81,10 @@ def run() -> int:
     pid = os.getpid()
     started_at = _now()
     try:
-        cfg = load_active_config()
+        entries = [(strategy, load_strategy_config(strategy)) for strategy in strategies()]
         write_json(STATUS, {"state": "running", "stage": "sync", "pid": pid, "started_at": started_at,
                             "version": SETUP_VERSION})
-        result = sync(cfg)
+        result = sync(market_sync_config(entries))
         if not result["ok"]:
             write_json(
                 STATUS,
@@ -99,10 +100,12 @@ def run() -> int:
             return 1
         write_json(STATUS, {"state": "running", "stage": "backtest", "pid": pid, "started_at": started_at,
                             "version": SETUP_VERSION})
-        output = run_family_backtest(cfg)
+        outputs = {strategy.id: run_family_backtest(cfg, strategy_id=strategy.id).name
+                   for strategy, cfg in entries}
         write_json(
             STATUS,
-            {"state": "done", "stage": "backtest", "run_id": output.name, "started_at": started_at,
+            {"state": "done", "stage": "backtest", "run_id": outputs[entries[0][0].id],
+             "run_ids": outputs, "started_at": started_at,
              "finished_at": _now(), "version": SETUP_VERSION},
         )
         return 0

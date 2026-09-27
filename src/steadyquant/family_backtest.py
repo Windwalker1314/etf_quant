@@ -9,9 +9,12 @@ from .config import ROOT, fingerprint, write_json
 from .data import TZ, Cache, DataError
 from .index_benchmark import benchmark_digest, load_shanghai_composite
 from .strategy import target_weights
+from .strategy_catalog import DEFAULT_STRATEGY_ID, research_pointer, strategy_by_id
 
 
-def run_family_backtest(cfg: dict, cache: Cache | None = None) -> Path:
+def run_family_backtest(cfg: dict, cache: Cache | None = None,
+                        strategy_id: str = DEFAULT_STRATEGY_ID) -> Path:
+    strategy_spec = strategy_by_id(strategy_id)
     cache = cache or Cache()
     data = cache.load(cfg)
     digest = cache.snapshot_digest
@@ -20,7 +23,7 @@ def run_family_backtest(cfg: dict, cache: Cache | None = None) -> Path:
     baseline_weights, _ = target_weights(data, cfg, baseline=True)
     baseline = simulate(data, baseline_weights, cfg)
 
-    run_id = datetime.now(TZ).strftime("%Y%m%d-%H%M%S") + "-" + fingerprint(cfg)[:6]
+    run_id = datetime.now(TZ).strftime("%Y%m%d-%H%M%S") + "-" + strategy_id + "-" + fingerprint(cfg)[:6]
     output = ROOT / "outputs/research" / run_id
     output.mkdir(parents=True, exist_ok=True)
     equity = strategy.equity[["equity"]].copy()
@@ -34,7 +37,11 @@ def run_family_backtest(cfg: dict, cache: Cache | None = None) -> Path:
     except (DataError, OSError, ValueError) as exc:
         benchmark["error_type"] = type(exc).__name__
     equity.to_parquet(output / "equity.parquet")
-    write_json(output / "protocol.json", {"config_hash": fingerprint(cfg), "data_sha256": digest,
-                                           "benchmark": benchmark})
-    write_json(ROOT / "outputs/latest_research.json", {"path": str(output), "run_id": run_id})
+    write_json(output / "protocol.json", {"strategy_id": strategy_id, "config_hash": fingerprint(cfg),
+                                           "data_sha256": digest, "benchmark": benchmark})
+    pointer = {"path": str(output), "run_id": run_id}
+    write_json(research_pointer(ROOT, strategy_spec), pointer)
+    if strategy_id == DEFAULT_STRATEGY_ID:
+        # Older deployments and local tools still read this pointer.
+        write_json(ROOT / "outputs/latest_research.json", pointer)
     return output

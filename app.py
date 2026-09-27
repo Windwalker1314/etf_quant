@@ -108,16 +108,17 @@ if os.environ.get("POCKETBAY_DATA_DIR"):
         st.session_state.pop("cloud_user_id", None)
         st.rerun()
 
-cfg = load_active_config()
-activation_path = ROOT / "data/strategy_activation.json"
-activation = json.loads(activation_path.read_text()) if activation_path.exists() else None
 cache = Cache()
 
 if os.environ.get("POCKETBAY_DATA_DIR"):
     from steadyquant.parent_ui import render
 
-    render(cfg, cache, cloud_user)
+    render(cache, cloud_user)
     st.stop()
+
+cfg = load_active_config()
+activation_path = ROOT / "data/strategy_activation.json"
+activation = json.loads(activation_path.read_text()) if activation_path.exists() else None
 
 
 def chart(fig, height=360):

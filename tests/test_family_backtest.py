@@ -1,9 +1,11 @@
+import json
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from steadyquant import config, data, factors, family_backtest
+from steadyquant import config, data, factors, family_backtest, strategy_catalog
+from steadyquant.strategy_catalog import Strategy, research_pointer
 
 
 def test_cloud_backtest_needs_no_factor_lab_config(tmp_path, monkeypatch):
@@ -37,3 +39,14 @@ def test_cloud_backtest_needs_no_factor_lab_config(tmp_path, monkeypatch):
     assert np.isclose(equity.shanghai_composite.iloc[-1] / cfg["initial_cash"],
                       (3000 + len(dates) - 1) / 3000)
     assert (tmp_path / "outputs/latest_research.json").exists()
+    assert research_pointer(tmp_path, Strategy("original", "等风险月初", "现行策略")).exists()
+    protocol = json.loads((output / "protocol.json").read_text())
+    assert protocol["strategy_id"] == "original"
+    assert protocol["config_hash"] == config.fingerprint(cfg)
+
+    second = Strategy("test_second", "测试策略", "仅用于测试隔离")
+    monkeypatch.setattr(strategy_catalog, "STRATEGIES", (*strategy_catalog.STRATEGIES, second))
+    second_output = family_backtest.run_family_backtest(cfg, cache, strategy_id=second.id)
+    assert second_output != output
+    assert json.loads(research_pointer(tmp_path, second).read_text())["path"] == str(second_output)
+    assert json.loads((tmp_path / "outputs/latest_research.json").read_text())["path"] == str(output)
