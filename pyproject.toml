@@ -11,6 +11,7 @@ dependencies = ["akquant==0.3.55", "pandas>=2.2,<3", "numpy>=2.2", "tushare==1.4
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.12"]
+research = ["akshare>=1.18,<2"]
 
 [project.scripts]
 sq = "steadyquant.cli:main"

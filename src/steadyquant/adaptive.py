@@ -40,10 +40,17 @@ def equal_risk(cov: np.ndarray) -> np.ndarray:
     return x / x.sum()
 
 
-def adaptive_weights(data: dict[str, pd.DataFrame], cfg: dict, macro_raw=None):
+def adaptive_weights(data: dict[str, pd.DataFrame], cfg: dict, macro_raw=None, *, bond_cap=None):
     symbols = [a["symbol"] for a in cfg["assets"]]
     panel = adjusted_frame(data)
     close = panel.pivot(index="date", columns="symbol", values="close").reindex(columns=symbols).sort_index()
+    # Explicit research-only input. Default/live callers retain the original group cap.
+    bond_limits = pd.Series(GROUP_CAPS["bond"], index=close.index) if bond_cap is None else (
+        bond_cap.reindex(close.index) if isinstance(bond_cap, pd.Series)
+        else pd.Series(bond_cap, index=close.index)
+    )
+    if bond_limits.isna().any() or not bond_limits.between(0, GROUP_CAPS["bond"]).all():
+        raise ValueError("Bond cap must be complete and between 0 and 30%")
     returns = close.ffill().pct_change(fill_method=None)
     # Real bars only for eligibility. Forward fill is solely a valuation convention.
     amount = panel.pivot(index="date", columns="symbol", values="amount").reindex_like(close)
@@ -104,6 +111,8 @@ def adaptive_weights(data: dict[str, pd.DataFrame], cfg: dict, macro_raw=None):
                     if np.isfinite(change):
                         scores[j] *= 1 - 0.20 * np.tanh(change)  # rates are percentage points
         caps = np.array([min(GROUP_CAPS[g], 0.30 * (mixing[:, j] > 0).sum()) for j, g in enumerate(groups)])
+        if "bond" in groups:
+            caps[groups.index("bond")] = min(caps[groups.index("bond")], bond_limits.iloc[i])
         allocation = capped_proportions(scores, caps, 1 - cfg["cash_buffer"])
         equities = np.array([g.endswith("equity") for g in groups])
         if allocation[equities].sum() > 0.60:
