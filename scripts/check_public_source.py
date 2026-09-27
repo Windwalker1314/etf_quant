@@ -15,13 +15,14 @@ def main():
     root = Path(git("rev-parse", "--show-toplevel").decode().strip())
     files = git("ls-files", "-z").decode().split("\0")
     secrets = []
-    env_path = root / ".env"
-    if env_path.exists():
-        for line in env_path.read_text().splitlines():
-            key, sep, value = line.partition("=")
-            value = value.strip().strip("\"'")
-            if sep and re.search(r"token|secret|password|api.?key", key, re.I) and len(value) >= 8:
-                secrets.append(value.encode())
+    for env_name in (".env", ".pocketbay-cloud.env"):
+        env_path = root / env_name
+        if env_path.exists():
+            for line in env_path.read_text().splitlines():
+                key, sep, value = line.partition("=")
+                value = value.strip().strip("\"'")
+                if sep and re.search(r"token|secret|password|api.?key", key, re.I) and len(value) >= 8:
+                    secrets.append(value.encode())
     patterns = [
         ("private key", rb"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
         ("GitHub credential", rb"(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,})"),
@@ -30,7 +31,7 @@ def main():
         ("personal machine path", rb"/Users/[A-Za-z0-9._-]+/"),
     ]
     blocked_parts = {"data", "outputs", "logs", ".venv", ".codex", ".agents", "__pycache__"}
-    blocked_suffixes = {".parquet", ".csv", ".tsv", ".xlsx", ".db", ".pem", ".key", ".log", ".zip"}
+    blocked_suffixes = {".parquet", ".csv", ".tsv", ".xlsx", ".db", ".sqlite3", ".pem", ".key", ".log", ".zip"}
     failures, total = [], 0
     for name in filter(None, files):
         path = Path(name)

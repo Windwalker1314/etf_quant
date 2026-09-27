@@ -3,19 +3,57 @@
 from __future__ import annotations
 
 import json
+import os
+import sys
 from pathlib import Path
 
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+if os.environ.get("POCKETBAY_DATA_DIR"):
+    from scripts.pocketbay_bootstrap import prepare, prepare_environment
+
+    prepare_environment()
+    if __name__ == "__main__" and not st.runtime.exists():
+        os.execv(sys.executable, prepare())
+
 from steadyquant.config import ROOT, load_active_config, load_config, write_json
 from steadyquant.data import Cache, DataError
 from steadyquant.reports import number, pct
 
-st.set_page_config(page_title="SteadyQuant · 个人量化工作台", page_icon="◈", layout="wide")
-st.markdown(
-    """<style>
+cloud_mode = bool(os.environ.get("POCKETBAY_DATA_DIR"))
+st.set_page_config(
+    page_title="逸风ETF调仓助手" if cloud_mode else "SteadyQuant · 个人量化工作台",
+    page_icon="🌱" if cloud_mode else "◈",
+    layout="wide",
+)
+if cloud_mode:
+    st.markdown(
+        """<style>
+        .stApp,[data-testid="stAppViewContainer"]{background:#f6faf7;color:#193b34}
+        .block-container{max-width:1080px;padding-top:2rem}
+        h1,h2,h3,[data-testid="stMarkdownContainer"] p{color:#193b34}
+        [data-testid="stCaptionContainer"] p{color:#526a61!important}
+        .eyebrow{color:#276c54;font-size:20px;font-weight:750;letter-spacing:.02em;margin-bottom:14px}
+        [data-testid="stRadioOption"]{background:#edf5ef;border:1px solid #d7e8dc;
+            border-radius:999px;padding:7px 14px}
+        [data-testid="stRadioOption"]:has(input:checked){background:#dcefe3;border-color:#87bea1}
+        [data-testid="stRadioOption"] p{color:#254d3d!important;font-size:16px;font-weight:650}
+        [data-testid="stMetric"]{background:#fff;border:1px solid #dce9de;
+            border-radius:14px;padding:16px}
+        [data-testid="stMetricValue"]{color:#267b60}
+        button[kind="primary"]{background:#2e8b6d;border:0;border-radius:10px}
+        button[kind="primary"] p{color:#fff!important}
+        [data-testid="stTextInput"] input,[data-testid="stNumberInput"] input{
+            background:#fff;color:#193b34;border-color:#b9d4c2}
+        a{color:#267b60!important}hr{border-color:#dce9de}
+        </style>""",
+        unsafe_allow_html=True,
+    )
+else:
+    st.markdown(
+        """<style>
 .stApp{background:#0b1019;color:#e9eef6}[data-testid="stSidebar"]{background:#101925}
 .block-container{padding-top:2.5rem;max-width:1480px}h1{letter-spacing:-1px}
 [data-testid="stMetric"]{background:#121d2c;border:1px solid #233247;padding:20px;border-radius:12px}
@@ -23,13 +61,63 @@ st.markdown(
 .eyebrow{color:#72d5bc;font-size:12px;letter-spacing:3px}.muted{color:#8da1bc;font-size:14px;line-height:1.8}
 button[kind="primary"]{background:#3c9d89;border:0}hr{border-color:#243247}
 </style>""",
-    unsafe_allow_html=True,
-)
+        unsafe_allow_html=True,
+    )
+if os.environ.get("POCKETBAY_DATA_DIR"):
+    from steadyquant.family_auth import get_user, login, register
+
+    invite_code = os.environ.get("STEADYQUANT_CLOUD_PASSWORD", "")
+    if not invite_code:
+        st.error("家庭邀请码尚未配置，请联系网站管理员。")
+        st.stop()
+    cloud_user = get_user(ROOT, st.session_state.get("cloud_user_id", ""))
+    if cloud_user is None:
+        st.title("🌱 逸风ETF调仓助手")
+        st.caption("每人一个账号，持仓和买卖清单只属于自己。行情与历史回测由大家共用。")
+        st.caption("旧版共用持仓不会自动带入；注册后请在“我的持仓”重新核对一次。")
+        login_tab, signup_tab = st.tabs(["登录", "注册"])
+        with login_tab, st.form("family_login"):
+            login_name = st.text_input("用户名", key="login_name")
+            login_password = st.text_input("密码", type="password", key="login_password")
+            if st.form_submit_button("登录", type="primary"):
+                user = login(ROOT, login_name, login_password)
+                if user:
+                    st.session_state.cloud_user_id = user.id
+                    st.rerun()
+                st.error("用户名或密码错误；连续输错 5 次会暂停登录 15 分钟。")
+        with signup_tab, st.form("family_signup"):
+            signup_name = st.text_input("新用户名（2—24 个中文、英文、数字或下划线）")
+            signup_password = st.text_input("设置密码（至少 8 个字符）", type="password")
+            signup_confirm = st.text_input("再输入一次密码", type="password")
+            signup_invite = st.text_input("家庭邀请码（原网站访问密码）", type="password")
+            if st.form_submit_button("创建账号"):
+                if signup_password != signup_confirm:
+                    st.error("两次密码不一致。")
+                else:
+                    try:
+                        user = register(ROOT, signup_name, signup_password, signup_invite, invite_code)
+                    except ValueError as exc:
+                        st.error(str(exc))
+                    else:
+                        st.session_state.cloud_user_id = user.id
+                        st.rerun()
+        st.stop()
+    greeting, logout = st.columns([5, 1])
+    greeting.caption(f"你好，{cloud_user.name}")
+    if logout.button("退出登录"):
+        st.session_state.pop("cloud_user_id", None)
+        st.rerun()
 
 cfg = load_active_config()
 activation_path = ROOT / "data/strategy_activation.json"
 activation = json.loads(activation_path.read_text()) if activation_path.exists() else None
 cache = Cache()
+
+if os.environ.get("POCKETBAY_DATA_DIR"):
+    from steadyquant.parent_ui import render
+
+    render(cfg, cache, cloud_user)
+    st.stop()
 
 
 def chart(fig, height=360):
@@ -76,8 +164,9 @@ with st.sidebar:
     )
     st.divider()
     st.markdown("**运行模式**　研究 / 建议")
+    location = "PocketBay 云端" if os.environ.get("POCKETBAY_DATA_DIR") else "本机运行"
     st.caption(
-        "Tushare × AKQuant 0.3.55\n\n本机运行 · 无杠杆 · "
+        f"Tushare × AKQuant 0.3.55\n\n{location} · 无杠杆 · "
         + ("月首交易日调仓" if cfg.get("rebalance_frequency") == "monthly_first_session" else "周频调仓")
     )
     if activation:
@@ -105,7 +194,24 @@ if page == "组合总览":
         if (ROOT / "data/commission_parameter_update.json").exists():
             st.caption("下方沿用原历史报告；按实际万1.5、最低5元重跑的三档本金结果见「资金与佣金」。")
     if not stats:
-        st.info("尚无研究结果。在终端运行 .venv/bin/sq sync 与 .venv/bin/sq backtest。")
+        if os.environ.get("POCKETBAY_DATA_DIR"):
+            from steadyquant.cloud_setup import read_status, start
+
+            state = read_status()
+            st.info("云端首次使用需要获取 ETF 历史行情并生成回测，完成后这里会显示收益、净值和目标配置。")
+            if state.get("state") in {"queued", "running"}:
+                stage = {"starting": "准备中", "sync": "正在获取行情", "backtest": "正在计算回测"}
+                st.warning(f"初始化中：{stage.get(state.get('stage'), '处理中')}。可稍后刷新页面。")
+                if st.button("刷新进度"):
+                    st.rerun()
+            else:
+                if state.get("state") == "failed":
+                    st.error(state.get("message", "初始化未完成"))
+                if st.button("获取行情并生成回测", type="primary"):
+                    start()
+                    st.rerun()
+        else:
+            st.info("尚无研究结果。在终端运行 .venv/bin/sq sync 与 .venv/bin/sq backtest。")
     else:
         from steadyquant.metrics import performance
 
@@ -131,6 +237,7 @@ if page == "组合总览":
             ("equity", "稳健配置", "#73d9bc"),
             ("baseline", "固定配置", "#8395dc"),
             ("cn_equity_benchmark", "沪深300 ETF", "#586c83"),
+            ("shanghai_composite", "上证综指 · 价格指数", "#d9a96f"),
         ]:
             if key not in eq:
                 continue
@@ -142,6 +249,8 @@ if page == "组合总览":
                 )
             )
         chart(fig)
+        if "shanghai_composite" in eq:
+            st.caption("上证综指是点位参考线，不含分红和交易成本，不能直接按指数点位买入。")
         left, right = st.columns([1.1, 1])
         with left:
             st.subheader("最近目标配置")
@@ -604,10 +713,11 @@ elif page == "数据中心":
                 st.error("部分数据未就绪，详见同步日志。")
         except DataError as exc:
             st.error(str(exc))
-    st.code(
-        ".venv/bin/sq fetch 000001.SZ --kind stock --start 20200101\n.venv/bin/sq sync --full",
-        language="bash",
-    )
+    if not os.environ.get("POCKETBAY_DATA_DIR"):
+        st.code(
+            ".venv/bin/sq fetch 000001.SZ --kind stock --start 20200101\n.venv/bin/sq sync --full",
+            language="bash",
+        )
     st.caption(
         "个股缓存可供因子研究。默认可执行策略使用 ETF；单债和个股账户撮合尚未加入税费、公司行动及历史成分处理。"
     )
@@ -672,14 +782,26 @@ elif page == "账户与运行":
         signal, _ = calendar_dates(cache)
     except DataError:
         signal = pd.Timestamp.now(tz="Asia/Shanghai").strftime("%Y%m%d")
+    account_path = ROOT / "data/portfolio.json"
+    try:
+        saved_account = json.loads(account_path.read_text()) if account_path.exists() else {}
+    except (OSError, ValueError):
+        saved_account = {}
+    try:
+        account_date = pd.Timestamp(saved_account.get("as_of", signal)).date()
+    except (ValueError, TypeError):
+        account_date = pd.Timestamp(signal).date()
     with st.form("account"):
-        as_of = st.date_input("已核对的收盘日期", value=pd.Timestamp(signal).date())
-        cash = st.number_input("可用现金（元）", min_value=0.0, value=0.0, step=1000.0)
+        as_of = st.date_input("已核对的收盘日期", value=account_date)
+        cash = st.number_input("可用现金（元）", min_value=0.0, value=float(saved_account.get("cash", 0)), step=1000.0)
         positions = {}
         columns = st.columns(2)
         for i, asset in enumerate(cfg["assets"]):
             positions[asset["symbol"]] = columns[i % 2].number_input(
-                f"{asset['name']} {asset['symbol']}（份）", min_value=0, value=0, step=100
+                f"{asset['name']} {asset['symbol']}（份）",
+                min_value=0,
+                value=int(saved_account.get("positions", {}).get(asset["symbol"], 0)),
+                step=100,
             )
         confirmed = st.checkbox("这是账户的完整现金与持仓，已核对上述收盘日期")
         save = st.form_submit_button("保存账户快照")
@@ -689,10 +811,11 @@ elif page == "账户与运行":
         else:
             account = {"cash": cash, "positions": positions, "as_of": str(as_of), "confirmed": True}
             write_json(ROOT / "data/portfolio.json", account)
-            st.success("账户快照已保存在本机。")
-    st.subheader("运行命令")
-    st.code(
-        ".venv/bin/sq sync\n.venv/bin/sq backtest\n.venv/bin/sq daily --notify\n.venv/bin/sq app",
-        language="bash",
-    )
-    st.caption("定时运行状态见 docs/OPERATIONS.md。Mac 睡眠或关机时无法保证准时刷新；唤醒后可手动补跑。")
+            st.success("账户快照已保存在" + ("PocketBay 云端" if os.environ.get("POCKETBAY_DATA_DIR") else "本机") + "。")
+    if not os.environ.get("POCKETBAY_DATA_DIR"):
+        st.subheader("运行命令")
+        st.code(
+            ".venv/bin/sq sync\n.venv/bin/sq backtest\n.venv/bin/sq daily --notify\n.venv/bin/sq app",
+            language="bash",
+        )
+        st.caption("定时运行状态见 docs/OPERATIONS.md。Mac 睡眠或关机时无法保证准时刷新；唤醒后可手动补跑。")

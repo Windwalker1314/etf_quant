@@ -4,6 +4,9 @@
 !/README.md
 !/pyproject.toml
 !/requirements.lock.txt
+!/requirements.txt
+!/.python-version
+!/Procfile
 !/app.py
 !/start.command
 !/windows/
@@ -16,6 +19,7 @@
 
 # Personal runtime configuration and reports stay local.
 /configs/active.yaml
+/.pocketbay-cloud.env
 /configs/*local*
 /docs/*
 !/docs/ARCHITECTURE.md
