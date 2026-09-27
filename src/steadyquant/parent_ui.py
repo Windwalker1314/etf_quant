@@ -232,7 +232,7 @@ def _backtest_page(cfg: dict, research: Path | None):
 
 def render(cfg: dict, cache: Cache, user: User):
     st.markdown("""<style>
-    .block-container{max-width:1080px;padding-top:2rem}
+    .block-container{max-width:1080px}
     [data-testid="stSidebar"]{display:none}
     [data-testid="stMetric"]{padding:12px}
     button p{font-size:16px!important}

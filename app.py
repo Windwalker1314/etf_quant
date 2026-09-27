@@ -32,7 +32,7 @@ if cloud_mode:
     st.markdown(
         """<style>
         .stApp,[data-testid="stAppViewContainer"]{background:#f6faf7;color:#193b34}
-        .block-container{max-width:1080px;padding-top:2rem}
+        .block-container{max-width:1080px;padding-top:6rem}
         h1,h2,h3,[data-testid="stMarkdownContainer"] p{color:#193b34}
         [data-testid="stCaptionContainer"] p{color:#526a61!important}
         .eyebrow{color:#276c54;font-size:20px;font-weight:750;letter-spacing:.02em;margin-bottom:14px}
