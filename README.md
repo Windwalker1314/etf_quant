@@ -86,6 +86,8 @@ cp configs/adaptive_paper.yaml configs/active.yaml
 
 该入口要求本机已有完整的 `data/stocks/` 快照、交易日历和 `510300.SH` 基准行情；输出会分别列出全期、开发期、验证期和近期结果，以及同仓位基准、双倍交易成本和公司行动校验情况。现有个股快照是冻结研究数据，不能据此生成当日买卖建议；只有独立验证通过后才应考虑发布到家庭网站。
 
+纯个股的后续实验与 ETF 配置分开：`scripts/stock_daily_factor_sweep.py --pure-core` 用沪深 300 历史成分股比较预先写定的因子与仓位规则；`scripts/stock500_research_sync.py` 可另建中证 500 历史快照，然后用 `scripts/stock_daily_factor_sweep.py --stock500 --pure-core` 按相同规则重跑。`scripts/stock_daily_pure_audit.py --universe csi300 --factor residual_momentum_lowvol --budget always_100` 会逐笔复核一个股票组合及双倍成本。风险资产只持有股票；510300 行情只用于市场信号及对照，不进入股票策略持仓。以上均需本机完整历史数据和接口权限，产物保存在被忽略的 `data/`、`outputs/`，不修改 ETF 策略或网站。
+
 因子表达式示例：
 
 ```bash

@@ -144,6 +144,20 @@ def test_dividend_revisions_do_not_sum_duplicate_schemes_or_use_future_announcem
     assert np.isnan(result[0]["cash_div_tax"])
 
 
+def test_distinct_report_period_dividends_on_one_ex_date_are_both_paid():
+    snapshot, targets, cfg = miniature()
+    annual = snapshot["dividend"].iloc[0].to_dict()
+    special = {**annual, "end_date": "20160101", "cash_div_tax": 0.3}
+    snapshot["dividend"] = pd.DataFrame([annual, special, annual])
+    prepared = prepare_dividends(snapshot["dividend"], targets.index)
+    assert len(prepared) == 2
+    assert sorted(row["cash_div_tax"] for row in prepared) == [0.3, 1.0]
+    assert not any(row["reconciliation_error"] for row in prepared)
+    result = simulate_composite({}, snapshot, targets, cfg)
+    assert result.equity.loc["2016-01-07", "receivables"] == pytest.approx(520)
+    assert result.events.type.eq("qualification_block").sum() == 0
+
+
 def test_suspended_ex_date_does_not_double_count_dividend_value():
     snapshot, targets, cfg = miniature()
     for key in ("daily", "adj_factor", "stk_limit"):
@@ -152,3 +166,16 @@ def test_suspended_ex_date_does_not_double_count_dividend_value():
     assert r.equity.loc["2016-01-07", "equity"] == pytest.approx(r.equity.loc["2016-01-06", "equity"] - 100)
     assert r.equity.loc["2016-01-07", "receivables"] == 400
     assert "suspended_ex_reference" in set(r.events.type)
+
+
+def test_small_relative_factor_rounding_with_unchanged_price_is_not_corporate_action():
+    snapshot, targets, cfg = miniature(False)
+    snapshot["daily"]["pre_close"] = 10.0
+    snapshot["adj_factor"].loc[3:, "adj_factor"] = 1.00027
+    rounded = simulate_composite({}, snapshot, targets, cfg)
+    assert "adjustment_precision" in set(rounded.events.type)
+    assert "qualification_block" not in set(rounded.events.type)
+
+    snapshot["adj_factor"].loc[3:, "adj_factor"] = 1.001
+    unexplained = simulate_composite({}, snapshot, targets, cfg)
+    assert "qualification_block" in set(unexplained.events.type)

@@ -15,7 +15,7 @@ import pandas as pd
 from .backtest import BacktestResult
 from .strategy import rebalance_needed, scheduled
 
-VERSION = "stock-etf-next-open-v2-ex-reference"
+VERSION = "stock-etf-next-open-v4-factor-precision"
 
 
 def stock_fees(notional, quantity, buy, date, symbol, cfg, multiplier=1.0):
@@ -44,11 +44,14 @@ def prepare_dividends(raw, dates):
     d = d[d.ann_date.isna() | (d.ann_date <= d.ex_date)].drop_duplicates()
     fields = ["record_date", "cash_div_tax", "stk_div", "pay_date", "div_listdate"]
     resolved = []
-    for (symbol, exdate), group in d.groupby(["ts_code", "ex_date"], sort=True):
-        row = dict(ts_code=symbol, ex_date=exdate, source_rows=len(group), reconciliation_error=False)
-        # Schemes can be revised or combine annual and special dividends. Never
-        # sum duplicate schemes. Use the last known pre-ex-date announcement for
-        # each field; a null does not override an earlier concrete fact.
+    for (symbol, exdate, period), group in d.groupby(
+        ["ts_code", "ex_date", "end_date"], sort=True, dropna=False
+    ):
+        row = dict(ts_code=symbol, ex_date=exdate, end_date=period,
+                   source_rows=len(group), reconciliation_error=False)
+        # Revisions to one report-period scheme must not be double-counted.
+        # Distinct annual/special report periods on the same ex-date are
+        # separate entitlements and are processed independently below.
         for col in fields:
             known = group.loc[group[col].notna(), ["ann_date", col]]
             if known.empty:
@@ -83,16 +86,21 @@ def simulate_composite(etf_data, snapshot, targets, cfg, start="2016-01-01", end
     n = len(symbols)
     ix = {s: i for i, s in enumerate(symbols)}
     is_stock = np.array([s not in etf_data for s in symbols])
-    raw = (
-        snapshot["daily"].rename(columns={"ts_code": "symbol", "trade_date": "date", "vol": "volume"}).copy()
-    )
+    stock_symbols = {s for s in symbols if s not in etf_data}
+    raw = snapshot["daily"].loc[lambda frame: frame.ts_code.isin(stock_symbols)].rename(
+        columns={"ts_code": "symbol", "trade_date": "date", "vol": "volume"}
+    ).copy()
     raw["date"] = pd.to_datetime(raw.date)
     raw["volume"] *= 100
     if "pre_close" not in raw:
         raw["pre_close"] = np.nan
-    adj = snapshot["adj_factor"].rename(columns={"ts_code": "symbol", "trade_date": "date"}).copy()
+    adj = snapshot["adj_factor"].loc[lambda frame: frame.ts_code.isin(stock_symbols)].rename(
+        columns={"ts_code": "symbol", "trade_date": "date"}
+    ).copy()
     adj["date"] = pd.to_datetime(adj.date)
-    limits = snapshot["stk_limit"].rename(columns={"ts_code": "symbol", "trade_date": "date"}).copy()
+    limits = snapshot["stk_limit"].loc[lambda frame: frame.ts_code.isin(stock_symbols)].rename(
+        columns={"ts_code": "symbol", "trade_date": "date"}
+    ).copy()
     limits["date"] = pd.to_datetime(limits.date)
     raw = raw.merge(adj, on=["symbol", "date"], how="left", validate="one_to_one").merge(
         limits, on=["symbol", "date"], how="left", validate="one_to_one"
@@ -247,10 +255,11 @@ def simulate_composite(etf_data, snapshot, targets, cfg, start="2016-01-01", end
                 qty[j] *= ratio
                 previous_qty[j] *= ratio
             elif j not in known_adjustments:
-                # Source transitions between 3 and 4 decimals cause <=0.0005
-                # absolute factor shifts. Require an unchanged raw previous
-                # close too; no money or shares are created by this exception.
-                precision_only = abs(af[j] - last_adj[j]) <= 0.0005000001 and np.isclose(
+                # Provider factor precision can change by a few basis points
+                # even while the raw previous close stays unchanged. A small
+                # relative factor shift with no ex-price change creates no
+                # cash or shares; larger/unexplained actions still block.
+                precision_only = abs(af[j] / last_adj[j] - 1) <= 0.0005 and np.isclose(
                     panels["pre_close"][t, j], last[j], atol=0.005, rtol=0
                 )
                 events.append(
