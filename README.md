@@ -71,11 +71,20 @@ cp configs/adaptive_paper.yaml configs/active.yaml
 - `sq study`：策略参数及分段比较。
 - `sq macro-sync`、`sq adaptive`：宏观缓存与自适应配置研究。
 - `sq stock-sync`、`sq composite`：个股与 ETF 组合研究。
+- `scripts/run_stock_daily_study.py`：独立的个股日频策略研究，使用已保存的沪深 300 历史成分、股票日线、复权因子、涨跌停价及公司行动数据。每天收盘评分，次日开盘模拟交易；结果写入被忽略的 `outputs/stock_daily/`，不影响家庭网站或真实持仓。
 - `sq alternative-sync`、`sq alternative`：非量价因子研究。
 - `sq commission-study`：多本金、最低佣金与交易频率比较。
 - `sq sector-study`：固定行业卫星候选与同预算宽基对照。
 
 部分高级研究仍引用固定历史窗口和前序本地快照，不能在空仓库中直接获得完整结果。先阅读相应模块和脚本的数据依赖；不会为缺失的历史数据自动补造结果。`scripts/` 中的历史诊断与重算入口同样需要本机数据。
+
+个股日频研究的运行方式：
+
+```bash
+.venv/bin/python scripts/run_stock_daily_study.py
+```
+
+该入口要求本机已有完整的 `data/stocks/` 快照、交易日历和 `510300.SH` 基准行情；输出会分别列出全期、开发期、验证期和近期结果，以及同仓位基准、双倍交易成本和公司行动校验情况。现有个股快照是冻结研究数据，不能据此生成当日买卖建议；只有独立验证通过后才应考虑发布到家庭网站。
 
 因子表达式示例：
 

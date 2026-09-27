@@ -79,6 +79,8 @@ def scheduled(date: pd.Timestamp, cfg: dict, initialized: bool, previous_date=No
         return date.to_period("M") != pd.Timestamp(previous_date).to_period("M")
     if frequency == "monthly":
         return date.weekday() == cfg["rebalance_weekday"] and date.day <= 7
+    if frequency == "daily":
+        return True
     return date.weekday() == cfg["rebalance_weekday"]
 
 

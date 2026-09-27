@@ -47,7 +47,7 @@ def load_config(path: str | Path | None = None) -> dict:
             raise ValueError("Satellite fraction exceeds policy")
         if cfg["core_style"] not in {"steady", "fixed"} or cfg["core_config"].get("model"):
             raise ValueError("Invalid core model")
-    if cfg.get("rebalance_frequency", "weekly") not in {"weekly", "monthly", "monthly_first_session"}:
+    if cfg.get("rebalance_frequency", "weekly") not in {"daily", "weekly", "monthly", "monthly_first_session"}:
         raise ValueError("Unknown rebalance frequency")
     if cfg.get("model") == "adaptive":
         if cfg.get("risk_method") not in {"equal_risk", "inverse_vol"} or cfg["min_history"] < 253:

@@ -381,7 +381,7 @@ def simulate_composite(etf_data, snapshot, targets, cfg, start="2016-01-01", end
             risk_cut = is_stock[j] and qty[j] > 0 and w[t, j] < values[j] / nav * 0.6
             if not (on_schedule or risk_cut) or not np.isfinite(c[j]) or vol[j] <= 0:
                 continue
-            band_cfg = {**cfg, "rebalance_band": 0.005} if is_stock[j] else cfg
+            band_cfg = {**cfg, "rebalance_band": cfg.get("stock_rebalance_band", 0.005)} if is_stock[j] else cfg
             if not risk_cut and not rebalance_needed(w[t, j], values[j] / nav, band_cfg):
                 continue
             desired = math.floor(nav * w[t, j] / c[j] / 100) * 100
